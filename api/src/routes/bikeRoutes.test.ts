@@ -3,6 +3,7 @@ import { Application } from 'express';
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import { PrismaClient } from '../generated/prisma';
 import { createApp } from '../app';
+import path from 'path';
 
 describe('Bike Routes API', () => {
   let app: Application;
@@ -12,6 +13,11 @@ describe('Bike Routes API', () => {
     prismaMock = mockDeep<PrismaClient>();
     const { app: testApp } = createApp(prismaMock);
     app = testApp;
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('GET /api/bike-routes', () => {
@@ -119,88 +125,66 @@ describe('Bike Routes API', () => {
   });
 
   describe('POST /api/bike-routes', () => {
-    it('should create a new bike route', async () => {
-      const newRoute = {
-        name: 'New Trail',
-        description: 'A new exciting trail',
-        geoJSON: { type: 'LineString', coordinates: [[-122.5, 37.8]] },
-        distance: 15.0,
-        elevationGain: 1000,
-        startPoint: { type: 'Point', coordinates: [-122.5, 37.8] }
-      };
-
-      const createdRoute = {
+    it('should create a new bike route using a GPX file upload', async () => {
+      const mockCreatedRoute = {
         id: '3',
-        ...newRoute,
+        name: 'New Trail',
+        description: 'A new exciting route',
+        geoJSON: {},
+        distance:36.6,
+        elevationGain: 3369,
+        startPoint: { type: 'Point', coordinates: [-105.2598700, 40.0230370]  },
         createdAt: new Date('2024-01-03'),
         updatedAt: new Date('2024-01-03')
       };
-
-      const expectedCreatedRoute = {
-        ...createdRoute,
-        createdAt: createdRoute.createdAt.toISOString(),
-        updatedAt: createdRoute.updatedAt.toISOString()
-      };
-
-      prismaMock.bikeRoute.create.mockResolvedValue(createdRoute);
-
+  
+      prismaMock.bikeRoute.create.mockResolvedValue(mockCreatedRoute);
+  
       const response = await request(app)
         .post('/api/bike-routes')
-        .send(newRoute)
+        .field('name', 'New Route')
+        .field('description', 'A new exciting route')
+        .attach('gpxFile',  path.join(__dirname, '../fixtures/boulder_gravelanche.gpx'))
         .expect(201);
+  
+      expect(prismaMock.bikeRoute.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: 'New Route',
+          description: 'A new exciting route',
+          geoJSON: expect.any(Object),
+          distance:36.6,
+          elevationGain: 3369,
+          startPoint: { type: 'Point', coordinates: [-105.2598700, 40.0230370]  },
+        }),
+      });
 
-      expect(response.body).toEqual(expectedCreatedRoute);
+      expect(response.body).toEqual({
+        ...mockCreatedRoute,
+        createdAt: mockCreatedRoute.createdAt.toISOString(),
+        updatedAt: mockCreatedRoute.updatedAt.toISOString()
+      });
     });
 
-    it('should create a route without optional fields', async () => {
-      const minimalRoute = {
-        name: 'Minimal Trail',
-        geoJSON: { type: 'LineString', coordinates: [[-122.6, 37.9]] },
-        distance: 5.0,
-        elevationGain: 100
-      };
-
-      const createdRoute = {
-        id: '4',
-        ...minimalRoute,
-        description: null,
-        startPoint: null,
-        createdAt: new Date('2024-01-04'),
-        updatedAt: new Date('2024-01-04')
-      };
-
-      const expectedCreatedRoute = {
-        ...createdRoute,
-        createdAt: createdRoute.createdAt.toISOString(),
-        updatedAt: createdRoute.updatedAt.toISOString()
-      };
-
-      prismaMock.bikeRoute.create.mockResolvedValue(createdRoute);
-
+    it('should not accept a route without a GPX file', async () => {
       const response = await request(app)
         .post('/api/bike-routes')
-        .send(minimalRoute)
-        .expect(201);
+        .send({
+          name: 'Error Route',
+          description: 'A new exciting route'
+        })
+        .expect(400);
 
-      expect(response.body).toEqual(expectedCreatedRoute);
+      expect(response.body).toEqual({ error: 'GPX file is required' });
     });
 
-    it('should handle database errors during creation', async () => {
-      const newRoute = {
-        name: 'Error Trail',
-        geoJSON: { type: 'LineString', coordinates: [[-122.7, 37.7]] },
-        distance: 10.0,
-        elevationGain: 500
-      };
-
-      prismaMock.bikeRoute.create.mockRejectedValue(new Error('Database error'));
-
+    it('should not accept a route without a name', async () => {
       const response = await request(app)
         .post('/api/bike-routes')
-        .send(newRoute)
-        .expect(500);
+        .field('description', 'A new exciting route')
+        .attach('gpxFile',  path.join(__dirname, '../fixtures/boulder_gravelanche.gpx'))
+        .expect(400);
 
-      expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(response.body).toEqual({ error: 'Name is required' });
     });
   });
 

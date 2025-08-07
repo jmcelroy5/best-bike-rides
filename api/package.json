@@ -21,17 +21,21 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.13.0",
+    "@tmcw/togeojson": "^7.1.2",
     "@types/express": "^5.0.3",
     "@types/node": "^24.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "jsdom": "^26.1.0",
+    "multer": "^2.0.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.0.0",
     "@types/supertest": "^6.0.3",
     "jest": "^30.0.5",
     "jest-mock-extended": "^4.0.0",
