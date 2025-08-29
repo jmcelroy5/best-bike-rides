@@ -1,15 +1,20 @@
 import type { JSX } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import UploadRoute from './components/UploadRoute'
+
+import MainLayout from './components/MainLayout'
+import UploadRoute from './pages/UploadRoute'
+import Home from './pages/Home'
 
 function App(): JSX.Element {
   return (
     <Router>
+      <MainLayout>
       <Routes>
-        <Route path="/" element={<h1>Hello World</h1>} />
+        <Route path="/" element={<Home />} />
         <Route path="/uploadRoute" element={<UploadRoute />} />
-        <Route path="*" element={<h2>404 - Page Not Found</h2>} />
-      </Routes>
+          <Route path="*" element={<h2>404 - Page Not Found</h2>} />
+        </Routes>
+      </MainLayout>
     </Router>
   )
 }
